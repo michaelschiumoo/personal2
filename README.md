@@ -4,13 +4,36 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List
+import re
+from typing import Any, Dict, List, Set
 
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
+
+
+_STOPWORDS: Set[str] = {
+    "a", "an", "and", "are", "as", "at", "be", "but", "by",
+    "for", "from", "has", "have", "how", "i", "if", "in", "into",
+    "is", "it", "its", "of", "on", "or", "our", "so", "such",
+    "that", "the", "their", "then", "there", "these", "this",
+    "to", "was", "were", "what", "when", "where", "which", "who",
+    "why", "will", "with", "would", "you", "your",
+}
+
+
+def tokenize(text: str) -> List[str]:
+    """
+    Lightweight tokenizer:
+      - lowercase
+      - keep alphanumerics + apostrophes
+      - split to tokens
+      - drop stopwords
+    """
+    tokens = re.findall(r"[a-z0-9']+", text.lower())
+    return [t for t in tokens if t not in _STOPWORDS]
 
 
 class ResearchSynthesisAssistant:
@@ -29,6 +52,7 @@ class ResearchSynthesisAssistant:
         self.validate_inputs(sources, research_question)
         self.sources = sources
         self.research_question = research_question
+        self._question_keywords = set(tokenize(research_question))
         logging.info("Initialized with %d sources for question: %s", len(sources), research_question)
 
     @staticmethod
@@ -55,12 +79,11 @@ class ResearchSynthesisAssistant:
                 if s.strip() and "?" not in s
             ]
             for sent in sentences:
-                claim_type = self.classify_claim_type(sent)
                 claims.append(
                     {
                         "claim": sent,
                         "source_id": source["id"],
-                        "type": claim_type,
+                        "type": self.classify_claim_type(sent),
                     }
                 )
 
@@ -78,15 +101,17 @@ class ResearchSynthesisAssistant:
 
     def cluster_themes(self, claims: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
         themes: Dict[str, List[Dict[str, Any]]] = {}
-        question_keywords = set(self.research_question.lower().split())
 
         for claim in claims:
-            claim_words = set(str(claim["claim"]).lower().split())
-            overlap = question_keywords.intersection(claim_words)
-            if not overlap:
-                continue
+            claim_tokens = set(tokenize(str(claim["claim"])))
+            overlap = self._question_keywords.intersection(claim_tokens)
 
-            theme = max(overlap, key=len)
+            if overlap:
+                # Prefer longer/more specific tokens
+                theme = max(overlap, key=lambda t: (len(t), t))
+            else:
+                theme = "misc"
+
             themes.setdefault(theme, []).append(claim)
 
         return themes
@@ -122,7 +147,7 @@ class ResearchSynthesisAssistant:
             for u in u_list
         ] or ["No major uncertainties detected in clustered themes."]
 
-        output: Dict[str, Any] = {
+        return {
             "key_claims_by_theme": {
                 theme: [
                     f"{c['claim']} ({c['source_id']}, type: {c['type']})"
@@ -136,19 +161,17 @@ class ResearchSynthesisAssistant:
             "possible_next_questions": possible_next_questions,
             "human_approval_required": True,
         }
-        return output
 
 
 def evaluate_output(output: Dict[str, Any]) -> Dict[str, int]:
     has_claims = any(output.get("key_claims_by_theme", {}).values())
-    scores = {
+    return {
         "accuracy": 5 if has_claims else 1,
         "grounding": 5 if has_claims else 1,
         "explanation_quality": 4,
         "decision_usefulness": 4 if output.get("possible_next_questions") else 1,
         "hallucination_risk": 5,
     }
-    return scores
 
 
 if __name__ == "__main__":
@@ -172,4 +195,3 @@ if __name__ == "__main__":
         print("\nOutput passes basic thresholds but requires human approval.")
     else:
         print("\nOutput rejected due to low scores.")
-
