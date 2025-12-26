@@ -1,3 +1,6 @@
+whats the error i
+Copy
+/workspace/personal2$ /bin/bash -lc cat /workspace/personal2/README.md
 import json
 import logging
 from typing import List, Dict, Any
