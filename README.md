@@ -1,80 +1,44 @@
-AI Synthesis Agent
+# AI Synthesis Agent
 
-AI Synthesis Agent turns 3–5 text sources into an extractive, traceable executive brief. It is extractive-only (no rewritten or invented sentences). Every claim is copied directly from a source sentence and includes a source_id + sentence index for traceability.
+A small Python CLI that turns 3–5 text sources into an **extractive** executive brief.  
+**Every claim is copied from your sources** and includes `source_id + sentence index (+ clause index)` for traceability.
 
-What it does
+## What it does
 
-Input: a research question + 3–5 sources of text
+Given a research question and a small set of sources, it:
 
-Output: a report (Markdown or JSON) with:
+1. Splits sources into sentences, retrieves top-K sentences per source (deterministic).
+2. Extracts **claims** (extractive; no new text invented).
+3. Optionally splits long sentences into **clauses** so one sentence doesn’t become one oversized claim.
+4. Clusters claims into **themes** (tries nicer embeddings if installed; otherwise uses dependency-free TF-IDF).
+5. If similarities are too low for the main backend, it falls back to a simple **hashed bag-of-words** clustering backend.
+6. Produces a Markdown or JSON report:
+   - Executive summary (extractive)
+   - Themes with evidence bullets (extractive)
+   - Uncertainties + next questions
+   - Audit + scoring
 
-Executive Summary (extractive)
+## Key guarantees
 
-Themes (clustered claim groups)
+- **Extractive only**: output claims are taken verbatim from input text.
+- **Traceable**: each claim includes `source`, `sent`, and optional `clause`.
+- **Deterministic fallbacks**: runs without requiring heavy ML libraries.
 
-Evidence list for each theme (each item cites source + sentence index)
+## Install
 
-Uncertainties & gaps (low-support / assumption-heavy flags)
+Python 3.10+ recommended.
 
-Next questions to reduce uncertainty
+No required dependencies beyond the standard library.
 
-Audit metadata (config + similarity stats + agent decisions)
+Optional (improves similarity/cluster quality if available):
+- `sentence-transformers`
+- `scikit-learn`
+- `numpy`
 
-Hard guarantees
+## CLI usage
 
-Extractive only: no paraphrasing, no “AI-written” claims
+### Demo (no files needed)
 
-Traceability: every claim cites (source_id, sent_idx)
-
-Deterministic fallbacks: avoids hard dependency on heavy ML libraries; will fall back to simpler vectorization/clustering when needed
-
-How it works (high-level)
-
-Split each source into sentences
-
-Retrieve Top-K sentences per source most relevant to the question (default K=2)
-
-Treat each selected sentence as a claim
-
-Cluster claims into themes (target 3–5 themes)
-
-Optional conservative post-merge (token overlap only; never forced)
-
-If still too many themes, DISPLAY COMPACTION buckets leftovers into “other” (presentation only, not a semantic merge)
-
-Emit Markdown or JSON plus an audit trail
-
-Install / Requirements
-
-Python 3.10+ recommended
-
-No required ML dependencies
-
-Optional: sentence-transformers and/or scikit-learn can improve embedding quality, but the program runs without them
-
-CLI
-
-Demo (no files needed)
+```bash
 python main.py demo --format markdown
 
-Run on your own sources (file)
-python main.py run --question "What factors affect AI adoption in organizations?" --sources sources.json --format markdown
-
-Run on your own sources (stdin)
-cat sources.json | python main.py run --question "..." --sources - --format json
-
-Input format (sources.json)
-Provide 3–5 sources in a JSON array:
-
-[
-{ "id": "source1", "text": "Text for source 1", "meta": { "url": "https://example.com
-" } },
-{ "id": "source2", "text": "Text for source 2" },
-{ "id": "source3", "text": "Text for source 3" }
-]
-
-Notes / Common warning
-You may see a warning like:
-Low similarity for backend=pure-tfidf ... clustering fallback -> hashed-bow
-
-This means the initial similarity scores were near-zero (common on tiny datasets), so the agent switched to a deterministic fallback backend for clustering. The report is still valid; it’s just being honest about the fallback.
