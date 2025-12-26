@@ -13,14 +13,20 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-
 _STOPWORDS: Set[str] = {
+    # Core stopwords
     "a", "an", "and", "are", "as", "at", "be", "but", "by",
     "for", "from", "has", "have", "how", "i", "if", "in", "into",
     "is", "it", "its", "of", "on", "or", "our", "so", "such",
     "that", "the", "their", "then", "there", "these", "this",
     "to", "was", "were", "what", "when", "where", "which", "who",
     "why", "will", "with", "would", "you", "your",
+
+    # Question scaffolding (prevents theme labels like "factors"/"affect")
+    "factor", "factors", "affect", "affects", "affected", "affecting",
+
+    # Optional: often too generic as a theme
+    "organization", "organizations",
 }
 
 
@@ -107,7 +113,6 @@ class ResearchSynthesisAssistant:
             overlap = self._question_keywords.intersection(claim_tokens)
 
             if overlap:
-                # Prefer longer/more specific tokens
                 theme = max(overlap, key=lambda t: (len(t), t))
             else:
                 theme = "misc"
@@ -132,7 +137,9 @@ class ResearchSynthesisAssistant:
                     "No factual grounding: relies on opinions/assumptions."
                 )
 
-            uncertainties[theme] = theme_uncertainties
+            # Keep output cleaner by omitting empty lists
+            if theme_uncertainties:
+                uncertainties[theme] = theme_uncertainties
 
         return uncertainties
 
@@ -164,12 +171,17 @@ class ResearchSynthesisAssistant:
 
 
 def evaluate_output(output: Dict[str, Any]) -> Dict[str, int]:
-    has_claims = any(output.get("key_claims_by_theme", {}).values())
+    key_claims = output.get("key_claims_by_theme", {})
+    has_claims = any(key_claims.values())
+
+    uncertainties = output.get("uncertainties_and_gaps", {})
+    has_uncertainties = any(uncertainties.values())
+
     return {
         "accuracy": 5 if has_claims else 1,
         "grounding": 5 if has_claims else 1,
         "explanation_quality": 4,
-        "decision_usefulness": 4 if output.get("possible_next_questions") else 1,
+        "decision_usefulness": 4 if has_uncertainties else 2,
         "hallucination_risk": 5,
     }
 
