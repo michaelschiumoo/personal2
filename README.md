@@ -718,7 +718,7 @@ class AISynthesisAgent:
                     "threshold": round(threshold, 4),
                     "themes": n_themes,
                     "multi_claim_themes": multi_claim,
-                    "self_check_ok": ok,
+                    "pre_compaction_ok": ok,
                     "post_merge_merges": post_merge_merges,
                 }
             )
@@ -1261,7 +1261,7 @@ def to_markdown(res: SynthesisResult) -> str:
             f"threshold={it.get('threshold')}",
             f"themes={it.get('themes')}",
             f"multi_claim_themes={it.get('multi_claim_themes')}",
-            f"self_check_ok={it.get('self_check_ok')}",
+            f"pre_compaction_ok={it.get('pre_compaction_ok')}",
             f"post_merge_merges={it.get('post_merge_merges')}",
         ]
         lines.append(f"- {' '.join(bits)}")
@@ -1398,4 +1398,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
+
 
