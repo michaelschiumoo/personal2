@@ -22,8 +22,7 @@ It produces transparent, auditable results — every claim is directly cited wit
   - `sentence-transformers`
   - `scikit-learn`
   - `numpy`
-
----
+——
 
 ## ⚙️ Installation
 
@@ -45,7 +44,6 @@ or in JSON:
 python main.py demo --format json
 
 
-⸻
 
 📚 Use on your own sources
 
@@ -64,7 +62,6 @@ Flag	Description	Default
 --out	Output path or - for stdout	-
 
 
-⸻
 
 🧾 Input Format (sources.json)
 
@@ -179,7 +176,6 @@ Each synthesis result includes transparent scores:
 	•	usefulness
 	•	hallucination_risk_control
 
-⸻
 
 🧾 License
 
